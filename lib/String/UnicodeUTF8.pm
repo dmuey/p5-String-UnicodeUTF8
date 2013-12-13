@@ -6,7 +6,7 @@ use warnings;
 use String::Unquotemeta ();
 use Module::Want        ();
 
-$String::UnicodeUTF8::VERSION = '0.2';
+$String::UnicodeUTF8::VERSION = '0.21';
 
 sub import {
     return 1 if @_ == 1;    # no-op import()
@@ -106,7 +106,7 @@ sub escape_utf8_or_unicode {
             # }
             # els
             if ( $n < 32 || $n > 126 ) {
-                sprintf( ( !$is_uni && $n < 255 ? '\x%02x' : '\x{%x}' ), $n );
+                sprintf( ( !$is_uni && $n < 255 ? '\x%02x' : '\x{%04x}' ), $n );
             }
             elsif ($quotemeta) {
                 quotemeta($chr);
@@ -227,7 +227,7 @@ String::UnicodeUTF8 - non-collation related unicode/utf-8 bytes string-type-agno
 
 =head1 VERSION
 
-This document describes String::UnicodeUTF8 version 0.2
+This document describes String::UnicodeUTF8 version 0.21
 
 =head1 SYNOPSIS
 
