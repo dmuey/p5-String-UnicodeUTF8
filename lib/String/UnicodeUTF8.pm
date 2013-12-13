@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use String::Unquotemeta ();
-use Module::Want        ();
+use Module::Want 0.6 ();
 
 $String::UnicodeUTF8::VERSION = '0.21';
 
