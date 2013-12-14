@@ -353,9 +353,11 @@ The characer itself:
 
 bracketed \x octet: 
 
-This one I don’t like. It is ambiguous (it looks like octets but the notation looks like unicode). I almost always only see it when data is in the process of being corrupted.
+This one I don’t like. It is ambiguous (it is octets but it looks like unicode). I almost always only see it when data is in the process of being corrupted.
 
     perl -e 'print utf8::is_utf8("I \x{e2}\x{99}\x{a5} perl") . "\n";'
+
+Good rule of thumb is to be explicit with your intent: use brackets form with 4+ digits (zero padded if necessary) and non-bracket form with 2 digits.
 
 =head1 INTERFACE
 
@@ -480,6 +482,10 @@ No bugs have been reported.
 Please report any bugs or feature requests to
 C<bug-string-unicodeutf8@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
+
+=head1 TODO
+
+\N notation escaping/unescaping: Seems like YAGNI but if there is enough demand we can add it (lazy/separate since it’d be heavy).
 
 =head1 AUTHOR
 
