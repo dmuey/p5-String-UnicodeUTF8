@@ -359,6 +359,72 @@ This one I don’t like. It is ambiguous (it is octets but it looks like unicode
 
 Good rule of thumb is to be explicit with your intent: use brackets form with 4+ digits (zero padded if necessary) and non-bracket form with 2 digits.
 
+=head2 Tips on troubleshooting Unicode/utf-8 problems
+
+I’ll maintain some more detailed Unicode resources L<at my Unicode page|http://drmuey.com/?do=page&id=57> but for this doc there are 3 things that will help you:
+
+=over 4
+
+=item 1 checks the bytes
+
+Don’t look so much at seemingly corrupt display, examine the bytes at the source. Once you verify they are legit you can move on to finding out what it is that is mishandling them along the route.
+
+For example, you might do a SELECT on a column and also include the column in HEX and the character and bytes lengths of the column in the query. If the bytes are correct but the character length is wrong then that is a great hint as to where to look next.
+
+For perl, make sure you do so on bytes strings:
+
+    multivac:~ dmuey$ perl -le 'no utf8;print unpack("H*", "I ♥ Perl");'
+    4920e299a5205065726c
+    multivac:~ dmuey$ perl -le 'use utf8;print unpack("H*", "I ♥ Perl");'
+    492065205065726c
+    multivac:~ dmuey$ perl -le 'no utf8;print pack("H*", "4920e299a5205065726c");'
+    I ♥ Perl
+    multivac:~ dmuey$ perl -le 'use utf8;print pack("H*", "4920e299a5205065726c");'
+    I ♥ Perl
+    multivac:~ dmuey$ perl -le 'use utf8;print pack("H*", "492065205065726c");'
+    I e Perl
+    multivac:~ dmuey$ perl -le 'no utf8;print pack("H*", "492065205065726c");'
+    I e Perl
+    multivac:~ dmuey$
+
+Even better, use a tool that does what you mean regardless of the type of string:
+
+e.g. Devel::Kit does what you mean regardless of the type (via this module as it happens ;p):
+
+    [dmuey@multivac ~]$ perl -MDevel::Kit -e 'no utf8;xe("I ♥ Perl",1);'
+    debug(): Hex: 	[
+          'I : 49',
+          '  : 20',
+          '♥ : e299a5',
+          '  : 20',
+          'P : 50',
+          'e : 65',
+          'r : 72',
+          'l : 6c'
+        ]
+    [dmuey@multivac ~]$ perl -MDevel::Kit -e 'use utf8;xe("I ♥ Perl",1);'
+    debug(): Hex: 	[
+          'I : 49',
+          '  : 20',
+          '♥ : e299a5',
+          '  : 20',
+          'P : 50',
+          'e : 65',
+          'r : 72',
+          'l : 6c'
+        ]
+    [dmuey@multivac ~]$
+
+=item 2 use the simplest scenario
+
+If you can rule out as many factors as possible (HTTP request/response, database settings, perl -E enabling optional features that could affect Unicode/utf8-bytes,  etc) it will help you hone in on where your good bytes went bad.
+
+=item 3 use the simplest string
+
+I tend to use 'I ♥ Unicode' so that there is one multi-byte Unicode character to examine. Also, it is a visible charcater that most fonts support, which helps.
+
+=back
+
 =head1 INTERFACE
 
 All of these functions are exportable.
