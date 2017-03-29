@@ -1,4 +1,4 @@
-use Test::More tests => 40 + 14 + 12 + ( 7 * 28 ) + 20;
+use Test::More tests => 42 + 14 + 12 + ( 7 * 28 ) + 20 + 24;
 
 use String::UnicodeUTF8;
 
@@ -9,7 +9,7 @@ for my $n (qw(import _pre_581_is_utf8_hack function_that_does_not_exist)) {
     String::UnicodeUTF8->import($n);
     ok( !eval "defined \&$n", "$n is not import()ed" );
 }
-for my $f (qw(is_unicode char_count bytes_size get_unicode get_utf8 quotemeta_bytes quotemeta_utf8 quotemeta_unicode unquotemeta_bytes unquotemeta_utf8 unquotemeta_unicode escape_utf8_or_unicode escape_utf8 escape_unicode unescape_utf8_or_unicode unescape_utf8 unescape_unicode)) {
+for my $f (qw(is_unicode char_count bytes_size get_unicode get_utf8 quotemeta_bytes quotemeta_utf8 quotemeta_unicode unquotemeta_bytes unquotemeta_utf8 unquotemeta_unicode escape_utf8_or_unicode escape_utf8 escape_unicode unescape_utf8_or_unicode unescape_utf8 unescape_unicode contains_nonhuman_characters)) {
     ok( !eval "defined \&$f", "pre import sanity check for $f()" );
     String::UnicodeUTF8->import($f);
     ok( eval "defined \&$f", "$f is import()ed ok" );
@@ -195,3 +195,37 @@ for my $n ( sort { $a <=> $b } keys %code_points ) {
     cmp_ok( hex( sprintf( "%04x", $n ) ), '==', hex( sprintf( "%x", $n ) ), "$n sanity: %x and %04 are numerically the same" );
     is( escape_unicode("\xff $chr"), "\\x{00ff} $str", "escape_unicode() zero pads to length of 4 (avoids ambiguity): $code_points{$n}->[1]" );
 }
+
+# contains_nonhuman_characters()
+ok( !contains_nonhuman_characters("I \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns false when it does not contain non-human characters' );
+ok( !contains_nonhuman_characters("I \x{2665} perl"),     'contains_nonhuman_characters(unicode_string) returns false when it does not contain non-human characters' );
+
+ok( contains_nonhuman_characters("I\x0b \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it has a disallowed whitespace character' );
+ok( contains_nonhuman_characters("I\x{000B} \x{2665} perl"), 'contains_nonhuman_characters(unicode_string) returns true when it has a disallowed whitespace character' );
+
+ok( contains_nonhuman_characters("I\x00 \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it has a control character' );
+ok( contains_nonhuman_characters("I\x{0000} \x{2665} perl"), 'contains_nonhuman_characters(unicode_string) returns true when it has a control character' );
+
+ok( contains_nonhuman_characters("I\xe2\x80\x8b \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it has an invisible character' );
+ok( contains_nonhuman_characters("I\x{200B} \x{2665} perl"),         'contains_nonhuman_characters(unicode_string) returns true when it has an invisible character' );
+
+# contains_nonhuman_characters() allowed special character options
+ok( contains_nonhuman_characters("I\xc2\xa0 \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it contains NO-BREAK SPACE' );
+ok( contains_nonhuman_characters("I\x{00A0} \x{2665} perl"),     'contains_nonhuman_characters(unicode_string) returns true when it contains NO-BREAK SPACE' );
+ok( !contains_nonhuman_characters( "I\xc2\xa0 \xe2\x99\xa5 perl", 'NO-BREAK SPACE' => 1 ), 'contains_nonhuman_characters(utf8_string) returns false when it contains NO-BREAK SPACE and NO-BREAK SPACE is in the allowed special characters hash' );
+ok( !contains_nonhuman_characters( "I\x{00A0} \x{2665} perl",     'NO-BREAK SPACE' => 1 ), 'contains_nonhuman_characters(unicode_string) returns false when it contains NO-BREAK SPACE and NO-BREAK SPACE is in the allowed special characters hash' );
+
+ok( contains_nonhuman_characters("I\x0a \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it contains LINE FEED (LF)' );
+ok( contains_nonhuman_characters("I\x{000A} \x{2665} perl"), 'contains_nonhuman_characters(unicode_string) returns true when it contains LINE FEED (LF)' );
+ok( !contains_nonhuman_characters( "I\x0a \xe2\x99\xa5 perl", 'LINE FEED (LF)' => 1 ), 'contains_nonhuman_characters(utf8_string) returns false when it contains LINE FEED (LF) and LINE FEED (LF) is in the allowed special characters hash' );
+ok( !contains_nonhuman_characters( "I\x{000A} \x{2665} perl", 'LINE FEED (LF)' => 1 ), 'contains_nonhuman_characters(unicode_string) returns false when it contains LINE FEED (LF) and LINE FEED (LF) is in the allowed special characters hash' );
+
+ok( contains_nonhuman_characters("I\x0d \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it contains CARRIAGE RETURN (CR)' );
+ok( contains_nonhuman_characters("I\x{000D} \x{2665} perl"), 'contains_nonhuman_characters(unicode_string) returns true when it contains CARRIAGE RETURN (CR)' );
+ok( !contains_nonhuman_characters( "I\x0d \xe2\x99\xa5 perl", 'CARRIAGE RETURN (CR)' => 1 ), 'contains_nonhuman_characters(utf8_string) returns false when it contains CARRIAGE RETURN (CR) and CARRIAGE RETURN (CR) is in the allowed special characters hash' );
+ok( !contains_nonhuman_characters( "I\x{000D} \x{2665} perl", 'CARRIAGE RETURN (CR)' => 1 ), 'contains_nonhuman_characters(unicode_string) returns false when it contains CARRIAGE RETURN (CR) and CARRIAGE RETURN (CR) is in the allowed special characters hash' );
+
+ok( contains_nonhuman_characters("I\x09 \xe2\x99\xa5 perl"), 'contains_nonhuman_characters(utf8_string) returns true when it contains CHARACTER TABULATION' );
+ok( contains_nonhuman_characters("I\x{0009} \x{2665} perl"), 'contains_nonhuman_characters(unicode_string) returns true when it contains CHARACTER TABULATION' );
+ok( !contains_nonhuman_characters( "I\x09 \xe2\x99\xa5 perl", 'CHARACTER TABULATION' => 1 ), 'contains_nonhuman_characters(utf8_string) returns false when it contains CHARACTER TABULATION and CHARACTER TABULATION is in the allowed special characters hash' );
+ok( !contains_nonhuman_characters( "I\x{0009} \x{2665} perl", 'CHARACTER TABULATION' => 1 ), 'contains_nonhuman_characters(unicode_string) returns false when it contains CHARACTER TABULATION and CHARACTER TABULATION is in the allowed special characters hash' );
