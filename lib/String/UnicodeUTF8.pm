@@ -6,7 +6,7 @@ use warnings;
 use String::Unquotemeta ();
 use Module::Want 0.6 ();
 
-$String::UnicodeUTF8::VERSION = '0.21';
+$String::UnicodeUTF8::VERSION = '0.22';
 
 sub import {
     return 1 if @_ == 1;    # no-op import()
@@ -261,7 +261,7 @@ String::UnicodeUTF8 - non-collation related unicode/utf-8 bytes string-type-agno
 
 =head1 VERSION
 
-This document describes String::UnicodeUTF8 version 0.21
+This document describes String::UnicodeUTF8 version 0.22
 
 =head1 SYNOPSIS
 
