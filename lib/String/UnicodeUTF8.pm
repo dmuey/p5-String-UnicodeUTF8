@@ -20,6 +20,40 @@ sub import {
     }
 }
 
+# characters the caller may or may not consider “safe” depending on context
+my %specials = (
+    'NO-BREAK SPACE'       => qr/\x{00A0}/,
+    'LINE FEED (LF)'       => qr/\x{000A}/,
+    'CARRIAGE RETURN (CR)' => qr/\x{000D}/,
+    'CHARACTER TABULATION' => qr/\x{0009}/,
+);
+
+# `unichars '\p{WhiteSpace}'` sans SPACE/0020 and %specials
+my $disallowed_whitespace = qr/(?:\x{000B}|\x{000C}|\x{0085}|\x{1680}|\x{180E}|\x{2000}|\x{2001}|\x{2002}|\x{2003}|\x{2004}|\x{2005}|\x{2006}|\x{2007}|\x{2008}|\x{2009}|\x{200A}|\x{2028}|\x{2029}|\x{202F}|\x{205F}|\x{3000})/;
+
+# unichars '\p{Control}' ` sans %specials
+my $control =
+  qr/(?:\x{0000}|\x{0001}|\x{0002}|\x{0003}|\x{0004}|\x{0005}|\x{0006}|\x{0007}|\x{0008}|\x{000B}|\x{000C}|\x{000E}|\x{000F}|\x{0010}|\x{0011}|\x{0012}|\x{0013}|\x{0014}|\x{0015}|\x{0016}|\x{0017}|\x{0018}|\x{0019}|\x{001A}|\x{001B}|\x{001C}|\x{001D}|\x{001E}|\x{001F}|\x{007F}|\x{0080}|\x{0081}|\x{0082}|\x{0083}|\x{0084}|\x{0085}|\x{0086}|\x{0087}|\x{0088}|\x{0089}|\x{008A}|\x{008B}|\x{008C}|\x{008D}|\x{008E}|\x{008F}|\x{0090}|\x{0091}|\x{0092}|\x{0093}|\x{0094}|\x{0095}|\x{0096}|\x{0097}|\x{0098}|\x{0099}|\x{009A}|\x{009B}|\x{009C}|\x{009D}|\x{009E}|\x{009F})/;
+
+# `uninames invisible`
+my $invisible = qr/(?:\x{200B}|\x{2062}|\x{2063}|\x{2064})/;
+
+sub contains_nonhuman_characters {
+    my ( $string, %allow_specials ) = @_;
+    my $uni_str = get_unicode($string);
+
+    for my $name ( keys %specials ) {
+        next if $allow_specials{$name};
+        return 1 if $uni_str =~ m/$specials{$name}/;
+    }
+
+    return 1 if $uni_str =~ m/$invisible/;
+    return 1 if $uni_str =~ m/$disallowed_whitespace/;
+    return 1 if $uni_str =~ m/$control/;
+
+    return;
+}
+
 # is_utf8() is confusing, it really means “is this a Unicode string”, not “is this a utf-8 bytes string”)
 *is_unicode = $] >= 5.008_001 ? \&utf8::is_utf8 : \&_pre_581_is_utf8_hack;    # or just 'use 5.8.1;' and drop this ?
 
@@ -100,7 +134,7 @@ sub escape_utf8_or_unicode {
         {
             my $chr = "$1";
             my $n   = ord($chr);
-            
+
             # if ( exists $esc{$chr} ) { # more universal way ???
             #     $esc{$chr};
             # }
@@ -232,11 +266,11 @@ This document describes String::UnicodeUTF8 version 0.21
 =head1 SYNOPSIS
 
     use String::UnicodeUTF8 qw(char_count bytes_size is_unicode);
-    
+
     say '$string type is: ' . is_unicode($string) ? 'Unicode' : 'bytes';
-    
+
     say '$string has this many characters: ' . char_count($string);
-    
+
     say '$string takes up this many bytes: ' . bytes_size($string);
 
 =head1 DESCRIPTION
@@ -287,7 +321,7 @@ See L<perlunicode> for more info.
 
 =item Anything not explicitly stated in the POD.
 
-=back 
+=back
 
 =head2 What this module is meant for
 
@@ -297,7 +331,7 @@ See L<perlunicode> for more info.
 
 The term “utf-8” and “Unicode” (akin to “encoding” and “charset”) are typically used ambiguously and perl docs are not immune.
 
-It could mean either a Unicode string or a bytes string depending on the “thing” in question. ick, just ick. That is where this module comes in. 
+It could mean either a Unicode string or a bytes string depending on the “thing” in question. ick, just ick. That is where this module comes in.
 
 It defines those concepts strictly as “Unicode string” and “utf-8 bytes string” (the latter is shortened by removing the first or second word because they are essentially synonymous conceptually).
 
@@ -351,7 +385,7 @@ The characer itself:
     perl -e 'use utf8;print utf8::is_utf8("I \x{2665} perl") . "\n";' # a L<Unicode String> regardless of perl’s “mode”.
     perl -e 'no utf8;print utf8::is_utf8("I \x{2665} perl") . "\n";'  # a L<Unicode String> regardless of perl’s “mode”.
 
-bracketed \x octet: 
+bracketed \x octet:
 
 This one I don’t like. It is ambiguous (it is octets but it looks like unicode). I almost always only see it when data is in the process of being corrupted.
 
@@ -475,7 +509,7 @@ Like L<escape_utf8_or_unicode()> but force it to be in L</Unicode String> style 
 
 =head2 unescape_utf8_or_unicode()
 
-Turn slash-x notation back into the character. 
+Turn slash-x notation back into the character.
 
 If there was a L</Unicode String> \x{2665} style escape it returns a L</Unicode String>.
 
@@ -512,6 +546,38 @@ Unicode aware version of L<String::Unquotemeta/unquotemeta()> that returns a L</
 =head2 unquotemeta_unicode()
 
 Unicode aware version of L<String::Unquotemeta/unquotemeta()> that returns a L</Unicode String>.
+
+=head2 contains_nonhuman_characters()
+
+Returns true if the given string contains invisible, Control, or WhiteSpace (other than a normal space) characters regardless of the argument’s type. Returns false otherwise.
+
+After the string you can pass in a hash of certain “special” characters you may want to allow.
+
+e.g. this is the same as `contains_nonhuman_characters($string)` except it will allow non breaking space character also:
+
+    contains_nonhuman_characters($string, 'NO-BREAK SPACE' => 1);
+
+The valid keys are:
+
+=over 4
+
+=item 'NO-BREAK SPACE'
+
+U+00A0
+
+=item 'LINE FEED (LF)'
+
+U+000A
+
+=item 'CARRIAGE RETURN (CR)'
+
+U+000D
+
+=item 'CHARACTER TABULATION'
+
+U+0009
+
+=back
 
 =head1 DIAGNOSTICS
 
